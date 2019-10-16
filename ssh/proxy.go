@@ -326,52 +326,15 @@ func (p *ProxyConn) checkBridgeAuthWithNoBanner(packet []byte) (bool, error) {
 	}
 }
 
-func (p *ProxyConn) AuthenticateProxyConn(initUserAuthMsg *userAuthRequestMsg, proxyConf *ProxyConfig) error {
-	err := p.Upstream.sendAuthReq()
-	if err != nil {
+func (p *ProxyConn) AuthenticateProxyConn(proxyConf *ProxyConfig) error {
+	if err := p.Upstream.clientAuthenticate(proxyConf.ClientConfig); err != nil {
+		// send failure
+		p.sendFailureMsg("secretless")
 		return err
 	}
 
-	userAuthMsg := initUserAuthMsg
-	for {
-		userAuthMsg, err = p.handleAuthMsg(userAuthMsg, proxyConf)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		if userAuthMsg != nil {
-			isSuccess, err := p.checkBridgeAuthWithNoBanner(Marshal(userAuthMsg))
-			if err != nil {
-				return err
-			}
-			if isSuccess {
-				return nil
-			}
-		}
-
-		var packet []byte
-
-		for {
-			// Read next msg after a failure
-			if packet, err = p.Downstream.transport.readPacket(); err != nil {
-				return err
-			}
-
-			if packet[0] == msgUserAuthRequest {
-				break
-			}
-
-			return errors.New("auth request msg can be acceptable")
-		}
-
-		var userAuthReq userAuthRequestMsg
-
-		if err = Unmarshal(packet, &userAuthReq); err != nil {
-			return err
-		}
-
-		userAuthMsg = &userAuthReq
-	}
+	// send ok
+	return p.Downstream.transport.writePacket([]byte{msgUserAuthSuccess})
 }
 
 func parsePublicKeyMsg(userAuthReq *userAuthRequestMsg) (PublicKey, bool, *Signature, error) {
