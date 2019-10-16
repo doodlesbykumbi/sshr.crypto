@@ -326,8 +326,8 @@ func (p *ProxyConn) checkBridgeAuthWithNoBanner(packet []byte) (bool, error) {
 	}
 }
 
-func (p *ProxyConn) AuthenticateProxyConn(proxyConf *ProxyConfig) error {
-	if err := p.Upstream.clientAuthenticate(proxyConf.ClientConfig); err != nil {
+func (p *ProxyConn) AuthenticateProxyConn(clientConfig *ClientConfig) error {
+	if err := p.Upstream.clientAuthenticate(clientConfig); err != nil {
 		// send failure
 		p.sendFailureMsg("secretless")
 		return err
